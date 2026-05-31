@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Gateway - Premium Web Console</title>
+  <!-- xterm.js CSS from CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Design Tokens & Theme Variables */
+    :root {
+      --bg-gradient: radial-gradient(circle at top left, #0e1118, #05070a);
+      --glass-bg: rgba(13, 17, 23, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --text-main: #e6edf3;
+      --text-muted: #8b949e;
+      
+      /* Glowing Accent Colors */
+      --color-primary: #58a6ff;
+      --color-primary-glow: rgba(88, 166, 255, 0.25);
+      
+      --color-success: #3fb950;
+      --color-success-glow: rgba(63, 185, 80, 0.4);
+      
+      --color-warning: #d29922;
+      --color-warning-glow: rgba(210, 153, 34, 0.4);
+      
+      --color-error: #f85149;
+      --color-error-glow: rgba(248, 81, 73, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Grid Overlay background */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.007) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.007) 1px, transparent 1px);
+      background-size: 30px 30px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Control Panel (Glassmorphic) */
+    header {
+      position: relative;
+      z-index: 10;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-glow {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary);
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Form Fields */
+    .controls-form {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-group label {
+      position: absolute;
+      left: 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      pointer-events: none;
+      letter-spacing: 0.5px;
+    }
+
+    .input-group input, .input-group select {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 13px;
+      padding: 8px 12px 8px 65px;
+      height: 36px;
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 220px;
+    }
+
+    /* Token field doesn't need as wide label pad but let's keep clean */
+    .input-group.token-input input {
+      padding-left: 60px;
+      width: 260px;
+      font-family: monospace;
+    }
+
+    .input-group.theme-input select {
+      padding-left: 60px;
+      width: 180px;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    /* Custom select arrow */
+    .input-group.theme-input::after {
+      content: "▼";
+      font-size: 9px;
+      color: var(--text-muted);
+      position: absolute;
+      right: 12px;
+      pointer-events: none;
+    }
+
+    .input-group input:focus, .input-group select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary-glow);
+    }
+
+    /* Buttons */
+    .btn {
+      height: 36px;
+      padding: 0 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+
+    .btn-connect {
+      background: var(--color-primary);
+      border: 1px solid transparent;
+      color: #05070a;
+    }
+
+    .btn-connect:hover {
+      background: #79b8ff;
+      box-shadow: 0 0 12px rgba(88, 166, 255, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-connect:active {
+      transform: translateY(0);
+    }
+
+    .btn-disconnect {
+      background: transparent;
+      border: 1px solid var(--color-error);
+      color: var(--color-error);
+    }
+
+    .btn-disconnect:hover {
+      background: var(--color-error-glow);
+      box-shadow: 0 0 12px var(--color-error-glow);
+      transform: translateY(-1px);
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #8b949e;
+      transition: all 0.3s ease;
+    }
+
+    /* Status Classes */
+    .status-disconnected {
+      color: var(--text-muted);
+    }
+    .status-disconnected .status-dot {
+      background: var(--text-muted);
+      box-shadow: none;
+    }
+
+    .status-connecting {
+      color: var(--color-warning);
+      border-color: rgba(210, 153, 34, 0.2);
+    }
+    .status-connecting .status-dot {
+      background: var(--color-warning);
+      box-shadow: 0 0 8px var(--color-warning);
+      animation: heartbeat 1.5s infinite;
+    }
+
+    .status-connected {
+      color: var(--color-success);
+      border-color: rgba(63, 185, 80, 0.2);
+    }
+    .status-connected .status-dot {
+      background: var(--color-success);
+      box-shadow: 0 0 8px var(--color-success);
+      animation: heartbeat 2.5s infinite;
+    }
+
+    .status-error {
+      color: var(--color-error);
+      border-color: rgba(248, 81, 73, 0.2);
+    }
+    .status-error .status-dot {
+      background: var(--color-error);
+      box-shadow: 0 0 8px var(--color-error);
+    }
+
+    /* Terminal Window Container */
+    main {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 61px);
+    }
+
+    .terminal-window {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: border-color 0.3s ease;
+    }
+
+    .terminal-window.connected {
+      border-color: rgba(88, 166, 255, 0.3);
+    }
+
+    .window-header {
+      background: #161b22;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      user-select: none;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .window-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .window-size {
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--text-muted);
+    }
+
+    /* Customizing the xterm output container */
+    #terminal-container {
+      flex: 1;
+      padding: 12px;
+      height: 100%;
+      width: 100%;
+      background: #0d1117;
+    }
+
+    /* Custom scrollbar for xterm container */
+    .xterm-viewport::-webkit-scrollbar {
+      width: 8px;
+    }
+    .xterm-viewport::-webkit-scrollbar-track {
+      background: #0d1117;
+    }
+    .xterm-viewport::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    .xterm-viewport::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Animations */
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 0 10px var(--color-primary);
+        opacity: 0.8;
+      }
+      50% {
+        box-shadow: 0 0 20px var(--color-primary);
+        opacity: 1;
+      }
+    }
+
+    @keyframes heartbeat {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+      }
+      50% {
+        transform: scale(1.3);
+        opacity: 1;
+      }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+      }
+      .controls-form {
+        justify-content: flex-start;
+      }
+      main {
+        height: calc(100vh - 140px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Controls Header -->
+  <header>
+    <div class="brand">
+      <div class="logo-glow"></div>
+      <h1>Terminal Gateway</h1>
+    </div>
+
+    <div class="controls-form">
+      <!-- Connection URL -->
+      <div class="input-group">
+        <label for="connection-url">Host</label>
+        <input type="text" id="connection-url" placeholder="ws://127.0.0.1:8080" />
+      </div>
+
+      <!-- Access Token -->
+      <div class="input-group token-input">
+        <label for="access-token">Token</label>
+        <input type="password" id="access-token" placeholder="Paste Security Token..." autocomplete="off" />
+      </div>
+
+      <!-- Theme Selector -->
+      <div class="input-group theme-input">
+        <label for="theme-selector">Theme</label>
+        <select id="theme-selector">
+          <option value="obsidian">Obsidian Dark</option>
+          <option value="cyberpunk">Cyberpunk Neon</option>
+          <option value="retro-amber">Retro Amber</option>
+          <option value="matrix">Matrix Green</option>
+          <option value="chalk">Sleek Chalk</option>
+        </select>
+      </div>
+
+      <!-- Action Button -->
+      <button id="connect-btn" class="btn btn-connect">Connect</button>
+
+      <!-- Status Indicator -->
+      <div id="status-badge" class="status-badge status-disconnected">
+        <div class="status-dot"></div>
+        <span id="status-text">Disconnected</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Terminal Area -->
+  <main>
+    <div class="terminal-window" id="terminal-window">
+      <div class="window-header">
+        <div class="window-dots">
+          <div class="window-dot dot-red"></div>
+          <div class="window-dot dot-yellow"></div>
+          <div class="window-dot dot-green"></div>
+        </div>
+        <div class="window-title" id="window-title">ZSH - INACTIVE</div>
+        <div class="window-size" id="window-size">80x24</div>
+      </div>
+      <div id="terminal-container"></div>
+    </div>
+  </main>
+
+  <!-- Load dependencies from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+  <script>
+    // Configuration & State
+    let socket = null;
+    let term = null;
+    let fitAddon = null;
+    let isAuthenticated = false;
+
+    // UI Elements
+    const urlInput = document.getElementById('connection-url');
+    const tokenInput = document.getElementById('access-token');
+    const themeSelector = document.getElementById('theme-selector');
+    const connectBtn = document.getElementById('connect-btn');
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const windowTitle = document.getElementById('window-title');
+    const windowSize = document.getElementById('window-size');
+    const terminalWindow = document.getElementById('terminal-window');
+
+    // Preset Color Themes for Terminal
+    const THEMES = {
+      obsidian: {
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#58a6ff',
+        black: '#21262d',
+        red: '#ff7b72',
+        green: '#3fb950',
+        yellow: '#d29922',
+        blue: '#58a6ff',
+        magenta: '#bc8cff',
+        cyan: '#39c5cf',
+        white: '#ffffff'
+      },
+      cyberpunk: {
+        background: '#0a0512',
+        foreground: '#00ffcc',
+        cursor: '#ff0055',
+        black: '#120b24',
+        red: '#ff0055',
+        green: '#00ffcc',
+        yellow: '#ffe600',
+        blue: '#0099ff',
+        magenta: '#ff00cc',
+        cyan: '#00ffff',
+        white: '#ffffff'
+      },
+      'retro-amber': {
+        background: '#110c00',
+        foreground: '#ffb000',
+        cursor: '#ffb000',
+        black: '#221800',
+        red: '#ff8000',
+        green: '#ffb000',
+        yellow: '#ffcc00',
+        blue: '#ffb000',
+        magenta: '#ff8000',
+        cyan: '#ffb000',
+        white: '#ffeaad'
+      },
+      matrix: {
+        background: '#000800',
+        foreground: '#00ff00',
+        cursor: '#00ff00',
+        black: '#001a00',
+        red: '#00aa00',
+        green: '#00ff00',
+        yellow: '#55ff55',
+        blue: '#00aa00',
+        magenta: '#00aa00',
+        cyan: '#55ff55',
+        white: '#ccffcc'
+      },
+      chalk: {
+        background: '#151515',
+        foreground: '#d0d0d0',
+        cursor: '#c0c0c0',
+        black: '#151515',
+        red: '#ac4142',
+        green: '#90a959',
+        yellow: '#f4bf75',
+        blue: '#6a9fb5',
+        magenta: '#aa759f',
+        cyan: '#75b5aa',
+        white: '#f5f5f5'
+      }
+    };
+
+    // Initialize Local Settings
+    function loadSavedSettings() {
+      const savedUrl = localStorage.getItem('terminal_gateway_url');
+      const savedToken = localStorage.getItem('terminal_gateway_token');
+      const savedTheme = localStorage.getItem('terminal_gateway_theme') || 'obsidian';
+
+      if (savedUrl) urlInput.value = savedUrl;
+      else urlInput.value = 'ws://127.0.0.1:8080';
+
+      if (savedToken) tokenInput.value = savedToken;
+
+      themeSelector.value = savedTheme;
+    }
+
+    function saveSettings() {
+      localStorage.setItem('terminal_gateway_url', urlInput.value.trim());
+      localStorage.setItem('terminal_gateway_token', tokenInput.value.trim());
+      localStorage.setItem('terminal_gateway_theme', themeSelector.value);
+    }
+
+    // Initialize xterm.js
+    function initTerminal() {
+      const selectedThemeKey = themeSelector.value;
+      const terminalTheme = THEMES[selectedThemeKey] || THEMES.obsidian;
+
+      term = new Terminal({
+        cursorBlink: true,
+        cursorStyle: 'block',
+        fontFamily: '"Fira Code", Menlo, Monaco, Consolas, monospace',
+        fontSize: 13,
+        lineHeight: 1.2,
+        theme: terminalTheme,
+        allowProposedApi: true
+      });
+
+      fitAddon = new FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(document.getElementById('terminal-container'));
+      fitAddon.fit();
+
+      // Show welcome instructions in terminal
+      term.writeln('\x1b[1;34m====================================================\x1b[0m');
+      term.writeln('\x1b[1;36m       WELCOME TO WEB TERMINAL GATEWAY CLIENT        \x1b[0m');
+      term.writeln('\x1b[1;34m====================================================\x1b[0m');
+      term.writeln('  1. Ensure your Mac backend server is running.');
+      term.writeln('  2. Enter the WebSocket Host and Access Token above.');
+      term.writeln('  3. Select your preferred color theme.');
+      term.writeln('  4. Click \x1b[1;32mConnect\x1b[0m to initiate authentication.');
+      term.writeln('\x1b[1;34m====================================================\x1b[0m\r\n');
+
+      updateSizeDisplay();
+
+      // Setup terminal data pipe (outgoing keypresses)
+      term.onData((data) => {
+        if (socket && socket.readyState === WebSocket.OPEN && isAuthenticated) {
+          socket.send(JSON.stringify({ type: 'data', data }));
+        }
+      });
+    }
+
+    // Update Status Badge UI
+    function setStatus(state, msg = '') {
+      statusBadge.className = 'status-badge';
+      statusBadge.classList.add(`status-${state}`);
+      
+      switch (state) {
+        case 'disconnected':
+          statusText.textContent = 'Disconnected';
+          connectBtn.textContent = 'Connect';
+          connectBtn.className = 'btn btn-connect';
+          windowTitle.textContent = 'ZSH - INACTIVE';
+          terminalWindow.classList.remove('connected');
+          break;
+        case 'connecting':
+          statusText.textContent = msg || 'Connecting...';
+          connectBtn.textContent = 'Cancel';
+          connectBtn.className = 'btn btn-disconnect';
+          windowTitle.textContent = 'ESTABLISHING...';
+          break;
+        case 'connected':
+          statusText.textContent = 'Secure';
+          connectBtn.textContent = 'Disconnect';
+          connectBtn.className = 'btn btn-disconnect';
+          windowTitle.textContent = 'ZSH - ACTIVE';
+          terminalWindow.classList.add('connected');
+          break;
+        case 'error':
+          statusText.textContent = msg || 'Error';
+          connectBtn.textContent = 'Connect';
+          connectBtn.className = 'btn btn-connect';
+          windowTitle.textContent = 'CONNECTION ERROR';
+          terminalWindow.classList.remove('connected');
+          break;
+      }
+    }
+
+    // Update Window Row/Col count
+    function updateSizeDisplay() {
+      if (term) {
+        windowSize.textContent = `${term.cols}x${term.rows}`;
+      }
+    }
+
+    // Connect WebSocket
+    function connect() {
+      const url = urlInput.value.trim();
+      const token = tokenInput.value.trim();
+
+      if (!url) {
+        alert('Please specify a host URL.');
+        return;
+      }
+
+      if (!token) {
+        alert('Authentication token is required.');
+        return;
+      }
+
+      saveSettings();
+      setStatus('connecting', 'Connecting...');
+      term.clear();
+      term.writeln('Connecting to gateway at ' + url + '...');
+
+      try {
+        socket = new WebSocket(url);
+      } catch (err) {
+        handleConnectionError('Connection failed: ' + err.message);
+        return;
+      }
+
+      // Handle socket open
+      socket.onopen = () => {
+        setStatus('connecting', 'Authenticating...');
+        term.writeln('Connection established. Sending security token...');
+        
+        // Initiate handshake
+        socket.send(JSON.stringify({
+          type: 'auth',
+          token: token,
+          cols: term.cols,
+          rows: term.rows
+        }));
+      };
+
+      // Handle message received
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'auth_success') {
+            isAuthenticated = true;
+            setStatus('connected');
+            term.clear();
+            term.focus();
+            return;
+          }
+
+          if (msg.type === 'data') {
+            term.write(msg.data);
+            return;
+          }
+
+          if (msg.type === 'system') {
+            term.writeln('\r\n\x1b[1;33m[Gateway: ' + msg.message + ']\x1b[0m\r');
+            return;
+          }
+
+          if (msg.type === 'error') {
+            handleConnectionError(msg.message);
+            return;
+          }
+        } catch (err) {
+          // If not JSON, write directly
+          term.write(event.data);
+        }
+      };
+
+      socket.onclose = (event) => {
+        const wasAuthenticated = isAuthenticated;
+        disconnectCleanly();
+        if (wasAuthenticated) {
+          term.writeln('\r\n\x1b[1;31mConnection closed cleanly.\x1b[0m\r');
+        }
+      };
+
+      socket.onerror = (err) => {
+        handleConnectionError('WebSocket connection error.');
+      };
+    }
+
+    // Graceful Disconnect
+    function disconnectCleanly() {
+      isAuthenticated = false;
+      if (socket) {
+        try {
+          socket.close();
+        } catch (e) {}
+        socket = null;
+      }
+      setStatus('disconnected');
+    }
+
+    // Connection Error Handler
+    function handleConnectionError(msg) {
+      disconnectCleanly();
+      setStatus('error', 'Failed');
+      term.writeln('\r\n\x1b[1;31m[ERROR: ' + msg + ']\x1b[0m\r');
+    }
+
+    // Trigger Resize
+    function handleResize() {
+      if (term && fitAddon) {
+        fitAddon.fit();
+        updateSizeDisplay();
+
+        if (socket && socket.readyState === WebSocket.OPEN && isAuthenticated) {
+          socket.send(JSON.stringify({
+            type: 'resize',
+            cols: term.cols,
+            rows: term.rows
+          }));
+        }
+      }
+    }
+
+    // Event Listeners
+    connectBtn.addEventListener('click', () => {
+      if (socket) {
+        disconnectCleanly();
+        term.writeln('\r\n\x1b[1;33mDisconnected by user.\x1b[0m\r');
+      } else {
+        connect();
+      }
+    });
+
+    themeSelector.addEventListener('change', () => {
+      const selectedThemeKey = themeSelector.value;
+      const newTheme = THEMES[selectedThemeKey] || THEMES.obsidian;
+      
+      if (term) {
+        term.options.theme = newTheme;
+      }
+      saveSettings();
+    });
+
+    // Window Resize listener
+    window.addEventListener('resize', () => {
+      // Throttle slightly
+      setTimeout(handleResize, 100);
+    });
+
+    // Init Page
+    window.onload = () => {
+      loadSavedSettings();
+      initTerminal();
+    };
+  </script>
+</body>
+</html>

@@ -428,11 +428,8 @@
         <input type="password" id="access-token" placeholder="Paste Security Token..." autocomplete="off" />
       </div>
       
-      <!-- Gist ID (Auto-Sync) -->
-      <div class="input-group">
-        <label for="gist-id">Gist ID</label>
-        <input type="text" id="gist-id" placeholder="GitHub Gist ID" />
-      </div>
+      <!-- Gist ID (Hidden, Hardcoded) -->
+      <input type="hidden" id="gist-id" value="9f7a45183cd07a801f5b76cc0b6dd4e8" />
 
       <!-- PIN (Auto-Sync) -->
       <div class="input-group token-input" style="width: 140px;">
@@ -578,14 +575,12 @@
     function loadSavedSettings() {
       const savedUrl = localStorage.getItem('terminal_gateway_url');
       const savedToken = localStorage.getItem('terminal_gateway_token');
-      const savedGist = localStorage.getItem('terminal_gateway_gist');
       const savedTheme = localStorage.getItem('terminal_gateway_theme') || 'obsidian';
 
       if (savedUrl) urlInput.value = savedUrl;
       else urlInput.value = 'ws://127.0.0.1:8080';
 
       if (savedToken) tokenInput.value = savedToken;
-      if (savedGist) gistIdInput.value = savedGist;
 
       themeSelector.value = savedTheme;
     }
@@ -593,7 +588,6 @@
     function saveSettings() {
       localStorage.setItem('terminal_gateway_url', urlInput.value.trim());
       localStorage.setItem('terminal_gateway_token', tokenInput.value.trim());
-      localStorage.setItem('terminal_gateway_gist', gistIdInput.value.trim());
       localStorage.setItem('terminal_gateway_theme', themeSelector.value);
     }
 
@@ -638,8 +632,8 @@
       const gistId = gistIdInput.value.trim();
       const pin = pinInput.value.trim();
 
-      if (!gistId || !pin) {
-        alert('Please provide both Gist ID and PIN for Auto-Sync.');
+      if (!pin) {
+        alert('Please provide your PIN to connect.');
         return;
       }
 

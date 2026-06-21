@@ -427,6 +427,18 @@
         <label for="access-token">Token</label>
         <input type="password" id="access-token" placeholder="Paste Security Token..." autocomplete="off" />
       </div>
+      
+      <!-- Gist ID (Auto-Sync) -->
+      <div class="input-group">
+        <label for="gist-id">Gist ID</label>
+        <input type="text" id="gist-id" placeholder="GitHub Gist ID" />
+      </div>
+
+      <!-- PIN (Auto-Sync) -->
+      <div class="input-group token-input" style="width: 140px;">
+        <label for="pin-input">PIN</label>
+        <input type="password" id="pin-input" placeholder="1234" autocomplete="off" style="width: 100%;" />
+      </div>
 
       <!-- Theme Selector -->
       <div class="input-group theme-input">
@@ -440,7 +452,8 @@
         </select>
       </div>
 
-      <!-- Action Button -->
+      <!-- Action Buttons -->
+      <button id="auto-sync-btn" class="btn btn-connect" style="background: #3fb950; color: #fff;">Auto-Sync</button>
       <button id="connect-btn" class="btn btn-connect">Connect</button>
 
       <!-- Status Indicator -->
@@ -481,8 +494,11 @@
     // UI Elements
     const urlInput = document.getElementById('connection-url');
     const tokenInput = document.getElementById('access-token');
+    const gistIdInput = document.getElementById('gist-id');
+    const pinInput = document.getElementById('pin-input');
     const themeSelector = document.getElementById('theme-selector');
     const connectBtn = document.getElementById('connect-btn');
+    const autoSyncBtn = document.getElementById('auto-sync-btn');
     const statusBadge = document.getElementById('status-badge');
     const statusText = document.getElementById('status-text');
     const windowTitle = document.getElementById('window-title');
@@ -562,12 +578,14 @@
     function loadSavedSettings() {
       const savedUrl = localStorage.getItem('terminal_gateway_url');
       const savedToken = localStorage.getItem('terminal_gateway_token');
+      const savedGist = localStorage.getItem('terminal_gateway_gist');
       const savedTheme = localStorage.getItem('terminal_gateway_theme') || 'obsidian';
 
       if (savedUrl) urlInput.value = savedUrl;
       else urlInput.value = 'ws://127.0.0.1:8080';
 
       if (savedToken) tokenInput.value = savedToken;
+      if (savedGist) gistIdInput.value = savedGist;
 
       themeSelector.value = savedTheme;
     }
@@ -575,7 +593,84 @@
     function saveSettings() {
       localStorage.setItem('terminal_gateway_url', urlInput.value.trim());
       localStorage.setItem('terminal_gateway_token', tokenInput.value.trim());
+      localStorage.setItem('terminal_gateway_gist', gistIdInput.value.trim());
       localStorage.setItem('terminal_gateway_theme', themeSelector.value);
+    }
+
+    // Crypto Utils
+    function hexToBytes(hex) {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+      }
+      return bytes;
+    }
+
+    async function decryptConfig(encryptedJsonStr, pin) {
+      const data = JSON.parse(encryptedJsonStr);
+      const salt = hexToBytes(data.salt);
+      const iv = hexToBytes(data.iv);
+      const authTag = hexToBytes(data.authTag);
+      const encrypted = hexToBytes(data.encrypted);
+      
+      const ciphertext = new Uint8Array(encrypted.length + authTag.length);
+      ciphertext.set(encrypted);
+      ciphertext.set(authTag, encrypted.length);
+
+      const encoder = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.importKey(
+        "raw", encoder.encode(pin), {name: "PBKDF2"}, false, ["deriveKey"]
+      );
+      const key = await window.crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+        keyMaterial, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+      );
+      
+      const decryptedBuffer = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv }, key, ciphertext
+      );
+      
+      return JSON.parse(new TextDecoder().decode(decryptedBuffer));
+    }
+
+    // Auto-Sync Logic
+    async function performAutoSync() {
+      const gistId = gistIdInput.value.trim();
+      const pin = pinInput.value.trim();
+
+      if (!gistId || !pin) {
+        alert('Please provide both Gist ID and PIN for Auto-Sync.');
+        return;
+      }
+
+      saveSettings();
+      term.clear();
+      term.writeln('Fetching credentials from GitHub Gist...');
+      
+      try {
+        const response = await fetch(`https://api.github.com/gists/${gistId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const gistData = await response.json();
+        
+        const fileContent = gistData.files['gateway-config.json']?.content;
+        if (!fileContent) throw new Error('gateway-config.json not found in Gist');
+
+        term.writeln('Decrypting credentials...');
+        const config = await decryptConfig(fileContent, pin);
+
+        term.writeln('\x1b[1;32mDecryption successful!\x1b[0m Applying credentials...');
+        urlInput.value = config.url;
+        tokenInput.value = config.token;
+        saveSettings();
+
+        // Connect automatically
+        connect();
+      } catch (err) {
+        term.writeln('\r\n\x1b[1;31m[Auto-Sync Error: ' + err.message + ']\x1b[0m\r');
+        if (err.name === 'OperationError') {
+          term.writeln('\x1b[1;31m(This usually means the PIN is incorrect)\x1b[0m\r');
+        }
+      }
     }
 
     // Initialize xterm.js
@@ -784,6 +879,11 @@
     }
 
     // Event Listeners
+    autoSyncBtn.addEventListener('click', () => {
+      if (socket) disconnectCleanly();
+      performAutoSync();
+    });
+
     connectBtn.addEventListener('click', () => {
       if (socket) {
         disconnectCleanly();

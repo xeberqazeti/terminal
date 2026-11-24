@@ -1160,8 +1160,8 @@
 
     async function loadNoVnc() {
       if (RFBClass) return RFBClass;
-      const mod = await import('https://cdn.jsdelivr.net/npm/@novnc/novnc@1.5.0/core/rfb.js');
-      RFBClass = mod.default;
+      const mod = await import('https://cdn.jsdelivr.net/npm/@novnc/novnc@1.5.0/+esm');
+      RFBClass = (mod.default RFBClass = mod.default;RFBClass = mod.default; mod.default.default) || mod.default;
       return RFBClass;
     }
 

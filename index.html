@@ -375,6 +375,185 @@
       background: #0d1117;
     }
 
+    #terminal-container.hidden {
+      display: none;
+    }
+
+    /* Mode Switcher Tabs */
+    .view-tabs {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 4px;
+    }
+
+    .view-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .view-tab:hover {
+      color: var(--text-main);
+    }
+
+    .view-tab.active {
+      background: var(--color-primary-glow);
+      color: var(--color-primary);
+      box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.35);
+    }
+
+    /* Screen (VNC) Container */
+    #screen-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      background: #05070a;
+      overflow: hidden;
+    }
+
+    #screen-container.active {
+      display: flex;
+    }
+
+    .vnc-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: #0f141c;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .vnc-toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .vnc-password-input {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--glass-border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 12px;
+      padding: 6px 10px;
+      height: 32px;
+      width: 190px;
+      outline: none;
+    }
+
+    .vnc-password-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 8px var(--color-primary-glow);
+    }
+
+    .btn-sm {
+      height: 32px;
+      padding: 0 12px;
+      font-size: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .vnc-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .vnc-status {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .vnc-status.connected {
+      color: var(--color-success);
+    }
+
+    .vnc-status.error {
+      color: var(--color-error);
+    }
+
+    #vnc-viewport {
+      flex: 1;
+      position: relative;
+      background: #000;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #vnc-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      gap: 10px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    #vnc-placeholder.hidden {
+      display: none;
+    }
+
+    #vnc-placeholder h2 {
+      font-size: 16px;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    #vnc-placeholder p {
+      font-size: 13px;
+      max-width: 540px;
+      line-height: 1.5;
+    }
+
+    #vnc-placeholder code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-main);
+      font-family: "Fira Code", monospace;
+      font-size: 12px;
+    }
+
     /* Custom scrollbar for xterm container */
     .xterm-viewport::-webkit-scrollbar {
       width: 8px;
@@ -494,10 +673,40 @@
           <div class="window-dot dot-yellow"></div>
           <div class="window-dot dot-green"></div>
         </div>
+        <div class="view-tabs" role="tablist" aria-label="Gateway View Mode">
+          <button id="tab-terminal" class="view-tab active" role="tab" aria-selected="true">Terminal</button>
+          <button id="tab-screen" class="view-tab" role="tab" aria-selected="false">Screen (VNC)</button>
+        </div>
         <div class="window-title" id="window-title">ZSH - INACTIVE</div>
         <div class="window-size" id="window-size">80x24</div>
       </div>
       <div id="terminal-container"></div>
+      <div id="screen-container">
+        <div class="vnc-toolbar">
+          <div class="vnc-toolbar-group">
+            <input type="password" id="vnc-password" class="vnc-password-input" placeholder="macOS VNC Password" autocomplete="off" />
+            <button id="vnc-connect-btn" class="btn btn-connect btn-sm">Connect Screen</button>
+            <label class="vnc-toggle">
+              <input type="checkbox" id="vnc-scale" checked />
+              Fit to Window
+            </label>
+            <label class="vnc-toggle">
+              <input type="checkbox" id="vnc-view-only" />
+              View Only
+            </label>
+            <button id="vnc-fullscreen-btn" class="btn btn-secondary btn-sm">Fullscreen</button>
+          </div>
+          <span id="vnc-status" class="vnc-status">Screen disconnected</span>
+        </div>
+        <div id="vnc-viewport">
+          <div id="vnc-placeholder">
+            <h2>Mac Screen Viewer (noVNC)</h2>
+            <p>1. Use <strong>Auto-Sync</strong> (or enter your Host and Token above).</p>
+            <p>2. On your Mac, enable <code>System Settings → General → Sharing → Screen Sharing → (i) → Computer Settings → VNC viewers may control screen with password</code>.</p>
+            <p>3. Enter that VNC password above and click <strong>Connect Screen</strong>.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -511,6 +720,9 @@
     let term = null;
     let fitAddon = null;
     let isAuthenticated = false;
+    let rfb = null;
+    let RFBClass = null;
+    let activeView = 'terminal';
 
     // UI Elements
     const urlInput = document.getElementById('connection-url');
@@ -525,6 +737,18 @@
     const windowTitle = document.getElementById('window-title');
     const windowSize = document.getElementById('window-size');
     const terminalWindow = document.getElementById('terminal-window');
+    const terminalContainer = document.getElementById('terminal-container');
+    const screenContainer = document.getElementById('screen-container');
+    const tabTerminal = document.getElementById('tab-terminal');
+    const tabScreen = document.getElementById('tab-screen');
+    const vncPasswordInput = document.getElementById('vnc-password');
+    const vncConnectBtn = document.getElementById('vnc-connect-btn');
+    const vncScaleCheckbox = document.getElementById('vnc-scale');
+    const vncViewOnlyCheckbox = document.getElementById('vnc-view-only');
+    const vncFullscreenBtn = document.getElementById('vnc-fullscreen-btn');
+    const vncStatus = document.getElementById('vnc-status');
+    const vncViewport = document.getElementById('vnc-viewport');
+    const vncPlaceholder = document.getElementById('vnc-placeholder');
 
     // Preset Color Themes for Terminal
     const THEMES = {
@@ -896,7 +1120,194 @@
       }
     }
 
+    // View Switcher (Terminal <-> Screen)
+    function switchView(view) {
+      activeView = view;
+      const isScreen = view === 'screen';
+
+      tabTerminal.classList.toggle('active', !isScreen);
+      tabTerminal.setAttribute('aria-selected', String(!isScreen));
+      tabScreen.classList.toggle('active', isScreen);
+      tabScreen.setAttribute('aria-selected', String(isScreen));
+
+      terminalContainer.classList.toggle('hidden', isScreen);
+      screenContainer.classList.toggle('active', isScreen);
+
+      if (!isScreen) {
+        setTimeout(() => {
+          handleResize();
+          if (term) term.focus();
+        }, 50);
+      } else if (rfb) {
+        rfb.focus();
+      }
+    }
+
+    function setVncStatus(message, state = '') {
+      vncStatus.textContent = message;
+      vncStatus.className = 'vnc-status' + (state ? ' ' + state : '');
+    }
+
+    function setVncButtonState(connectedOrConnecting) {
+      if (connectedOrConnecting) {
+        vncConnectBtn.textContent = 'Disconnect Screen';
+        vncConnectBtn.className = 'btn btn-disconnect btn-sm';
+      } else {
+        vncConnectBtn.textContent = 'Connect Screen';
+        vncConnectBtn.className = 'btn btn-connect btn-sm';
+      }
+    }
+
+    async function loadNoVnc() {
+      if (RFBClass) return RFBClass;
+      const mod = await import('https://cdn.jsdelivr.net/npm/@novnc/novnc@1.5.0/core/rfb.js');
+      RFBClass = mod.default;
+      return RFBClass;
+    }
+
+    function disconnectVnc(statusMsg = 'Screen disconnected') {
+      if (rfb) {
+        try {
+          rfb.disconnect();
+        } catch (e) {}
+        rfb = null;
+      }
+      vncPlaceholder.classList.remove('hidden');
+      setVncButtonState(false);
+      setVncStatus(statusMsg);
+    }
+
+    async function connectVnc() {
+      const baseUrl = urlInput.value.trim();
+      const token = tokenInput.value.trim();
+      const password = vncPasswordInput.value;
+
+      if (!baseUrl) {
+        alert('Please specify a Host URL (or click Auto-Sync first).');
+        return;
+      }
+      if (!token) {
+        alert('Access Token is required (or click Auto-Sync first).');
+        return;
+      }
+
+      saveSettings();
+
+      let vncUrl;
+      try {
+        vncUrl = new URL(baseUrl);
+        vncUrl.pathname = '/vnc';
+        vncUrl.searchParams.set('token', token);
+      } catch (err) {
+        setVncStatus('Invalid Host URL: ' + err.message, 'error');
+        return;
+      }
+
+      if (rfb) {
+        disconnectVnc();
+      }
+
+      setVncButtonState(true);
+      setVncStatus('Loading noVNC client...');
+
+      let RFB;
+      try {
+        RFB = await loadNoVnc();
+      } catch (err) {
+        setVncButtonState(false);
+        setVncStatus('Failed to load noVNC: ' + err.message, 'error');
+        return;
+      }
+
+      setVncStatus('Connecting to Mac screen...');
+      vncPlaceholder.classList.add('hidden');
+
+      try {
+        const options = password ? { credentials: { password } } : {};
+        rfb = new RFB(vncViewport, vncUrl.toString(), options);
+        rfb.scaleViewport = vncScaleCheckbox.checked;
+        rfb.resizeSession = false;
+        rfb.viewOnly = vncViewOnlyCheckbox.checked;
+
+        rfb.addEventListener('connect', () => {
+          setVncStatus('Connected to Mac screen', 'connected');
+          rfb.focus();
+        });
+
+        rfb.addEventListener('desktopname', (e) => {
+          if (e.detail && e.detail.name) {
+            setVncStatus('Connected: ' + e.detail.name, 'connected');
+          }
+        });
+
+        rfb.addEventListener('credentialsrequired', () => {
+          if (vncPasswordInput.value) {
+            rfb.sendCredentials({ password: vncPasswordInput.value });
+          } else {
+            disconnectVnc('VNC password required — enter it above');
+            setVncStatus('VNC password required — enter it above', 'error');
+            vncPasswordInput.focus();
+          }
+        });
+
+        rfb.addEventListener('securityfailure', (e) => {
+          const reason = (e.detail && e.detail.reason) ? e.detail.reason : 'Check VNC password & macOS Screen Sharing settings';
+          setVncStatus('VNC auth failed: ' + reason, 'error');
+        });
+
+        rfb.addEventListener('disconnect', (e) => {
+          const wasClean = e.detail && e.detail.clean;
+          rfb = null;
+          vncPlaceholder.classList.remove('hidden');
+          setVncButtonState(false);
+          if (wasClean) {
+            setVncStatus('Screen disconnected');
+          } else if (!vncStatus.classList.contains('error')) {
+            setVncStatus('Screen connection lost (ensure macOS Screen Sharing is on)', 'error');
+          }
+        });
+      } catch (err) {
+        rfb = null;
+        vncPlaceholder.classList.remove('hidden');
+        setVncButtonState(false);
+        setVncStatus('VNC error: ' + err.message, 'error');
+      }
+    }
+
     // Event Listeners
+    tabTerminal.addEventListener('click', () => switchView('terminal'));
+    tabScreen.addEventListener('click', () => switchView('screen'));
+
+    vncConnectBtn.addEventListener('click', () => {
+      if (rfb) {
+        disconnectVnc('Screen disconnected by user');
+      } else {
+        connectVnc();
+      }
+    });
+
+    vncPasswordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        connectVnc();
+      }
+    });
+
+    vncScaleCheckbox.addEventListener('change', () => {
+      if (rfb) rfb.scaleViewport = vncScaleCheckbox.checked;
+    });
+
+    vncViewOnlyCheckbox.addEventListener('change', () => {
+      if (rfb) rfb.viewOnly = vncViewOnlyCheckbox.checked;
+    });
+
+    vncFullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        vncViewport.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    });
+
     autoSyncBtn.addEventListener('click', () => {
       if (socket) disconnectCleanly();
       performAutoSync();

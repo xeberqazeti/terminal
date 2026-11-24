@@ -514,6 +514,10 @@
       justify-content: center;
     }
 
+    #vnc-viewport canvas {
+      cursor: default !important;
+    }
+
     #vnc-placeholder {
       position: absolute;
       inset: 0;
@@ -1235,6 +1239,7 @@
         rfb.scaleViewport = vncScaleCheckbox.checked;
         rfb.resizeSession = false;
         rfb.viewOnly = vncViewOnlyCheckbox.checked;
+        rfb.showDotCursor = true;
 
         rfb.addEventListener('connect', () => {
           setVncStatus('Connected to Mac screen', 'connected');

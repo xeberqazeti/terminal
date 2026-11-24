@@ -684,7 +684,8 @@
       <div id="screen-container">
         <div class="vnc-toolbar">
           <div class="vnc-toolbar-group">
-            <input type="password" id="vnc-password" class="vnc-password-input" placeholder="macOS VNC Password" autocomplete="off" />
+            <input type="text" id="vnc-username" class="vnc-password-input" style="width: 150px;" placeholder="Mac Username" autocomplete="off" />
+            <input type="password" id="vnc-password" class="vnc-password-input" placeholder="Mac / VNC Password" autocomplete="off" />
             <button id="vnc-connect-btn" class="btn btn-connect btn-sm">Connect Screen</button>
             <label class="vnc-toggle">
               <input type="checkbox" id="vnc-scale" checked />
@@ -741,6 +742,7 @@
     const screenContainer = document.getElementById('screen-container');
     const tabTerminal = document.getElementById('tab-terminal');
     const tabScreen = document.getElementById('tab-screen');
+    const vncUsernameInput = document.getElementById('vnc-username');
     const vncPasswordInput = document.getElementById('vnc-password');
     const vncConnectBtn = document.getElementById('vnc-connect-btn');
     const vncScaleCheckbox = document.getElementById('vnc-scale');
@@ -1180,6 +1182,7 @@
     async function connectVnc() {
       const baseUrl = urlInput.value.trim();
       const token = tokenInput.value.trim();
+      const username = vncUsernameInput.value.trim();
       const password = vncPasswordInput.value;
 
       if (!baseUrl) {
@@ -1223,7 +1226,11 @@
       vncPlaceholder.classList.add('hidden');
 
       try {
-        const options = password ? { credentials: { password } } : {};
+        const creds = {};
+        if (username) creds.username = username;
+        if (password) creds.password = password;
+        const options = Object.keys(creds).length > 0 ? { credentials: creds } : {};
+        let credentialsSent = false;
         rfb = new RFB(vncViewport, vncUrl.toString(), options);
         rfb.scaleViewport = vncScaleCheckbox.checked;
         rfb.resizeSession = false;
@@ -1240,14 +1247,35 @@
           }
         });
 
-        rfb.addEventListener('credentialsrequired', () => {
-          if (vncPasswordInput.value) {
-            rfb.sendCredentials({ password: vncPasswordInput.value });
-          } else {
-            disconnectVnc('VNC password required — enter it above');
-            setVncStatus('VNC password required — enter it above', 'error');
-            vncPasswordInput.focus();
+        rfb.addEventListener('credentialsrequired', (e) => {
+          const types = (e.detail && Array.isArray(e.detail.types)) ? e.detail.types : ['password'];
+          const needsUser = types.includes('username');
+          const needsPass = types.includes('password');
+          const curUser = vncUsernameInput.value.trim();
+          const curPass = vncPasswordInput.value;
+
+          if (needsUser && !curUser) {
+            disconnectVnc('Mac Username required for Remote Management — enter it above');
+            setVncStatus('Mac Username required for Remote Management — enter it above', 'error');
+            vncUsernameInput.focus();
+            return;
           }
+          if (needsPass && !curPass) {
+            disconnectVnc('Password required — enter it above');
+            setVncStatus('Password required — enter it above', 'error');
+            vncPasswordInput.focus();
+            return;
+          }
+          if (credentialsSent) {
+            disconnectVnc('Authentication rejected — check Mac Username & Password');
+            setVncStatus('Authentication rejected — check Mac Username & Password', 'error');
+            return;
+          }
+          credentialsSent = true;
+          const payload = {};
+          if (needsUser) payload.username = curUser;
+          if (needsPass) payload.password = curPass;
+          rfb.sendCredentials(payload);
         });
 
         rfb.addEventListener('securityfailure', (e) => {
